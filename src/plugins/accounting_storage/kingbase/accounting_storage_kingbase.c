@@ -153,6 +153,9 @@ char *step_table = "step_table";
 char *txn_table = "txn_table";
 char *user_table = "user_table";
 char *suspend_table = "suspend_table";
+#ifdef __METASTACK_NEW_APP_PARAM
+char *apptype_table = "apptype_table";
+#endif
 char *wckey_day_table = "wckey_usage_day_table";
 char *wckey_hour_table = "wckey_usage_hour_table";
 char *wckey_month_table = "wckey_usage_month_table";
@@ -1690,6 +1693,14 @@ extern int create_cluster_tables(kingbase_conn_t *kingbase_conn, char *cluster_n
 		{ NULL, NULL}
 	};
 
+#ifdef __METASTACK_NEW_APP_PARAM
+	storage_field_t apptype_table_fields[] = {
+		{ "job_db_inx", "numeric(21,0) not null" },
+		{ "app", "tinytext not null default ''" },
+		{ NULL, NULL}
+	};
+#endif
+
 	storage_field_t wckey_table_fields[] = {
 		{ "creation_time", "bigint not null" },
 		{ "mod_time", "bigint default 0 not null" },
@@ -1954,6 +1965,19 @@ extern int create_cluster_tables(kingbase_conn_t *kingbase_conn, char *cluster_n
 		}
 	xfree(end);
 
+#ifdef __METASTACK_NEW_APP_PARAM
+	snprintf(table_name, sizeof(table_name), "%s_%s",
+		 cluster_name, apptype_table);
+	xstrfmtcat(end, ", primary key (job_db_inx));");
+	if (kingbase_db_create_table(kingbase_conn, table_name,
+				  apptype_table_fields,
+				  end) == SLURM_ERROR){
+			xfree(end);
+			return SLURM_ERROR;
+		}
+	xfree(end);
+#endif
+
 	snprintf(table_name, sizeof(table_name), "%s_%s",
 		 cluster_name, wckey_table);
 	xstrfmtcat(end, ", primary key (id_wckey));"
@@ -2044,6 +2068,9 @@ extern int remove_cluster_tables(kingbase_conn_t *kingbase_conn, char *cluster_n
 #ifdef __METASTACK_NEW_AUTO_SUPPLEMENT_AVAIL_NODES
 		   "`%s_%s`, "
 #endif
+#ifdef __METASTACK_NEW_APP_PARAM
+		   "`%s_%s`, "
+#endif
 		   "`%s_%s`, `%s_%s`, `%s_%s`, `%s_%s`;",
 		   cluster_name, assoc_table,
 		   cluster_name, assoc_day_table,
@@ -2059,6 +2086,9 @@ extern int remove_cluster_tables(kingbase_conn_t *kingbase_conn, char *cluster_n
 		   cluster_name, last_ran_table,
 #ifdef __METASTACK_NEW_AUTO_SUPPLEMENT_AVAIL_NODES
 		   cluster_name, node_borrow_table,
+#endif
+#ifdef __METASTACK_NEW_APP_PARAM
+		   cluster_name, apptype_table,
 #endif
 		   cluster_name, resv_table,
 		   cluster_name, step_table,

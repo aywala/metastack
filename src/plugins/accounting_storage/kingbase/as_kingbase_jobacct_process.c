@@ -119,6 +119,9 @@ char *job_req_inx[] = {
 #ifdef __METASTACK_OPT_RESC_NODEDETAIL
 	"t1.resource_node_detail",
 #endif
+#ifdef __METASTACK_NEW_APP_PARAM
+	"t5.app",
+#endif
 	"t2.`user`"
 };
 
@@ -188,6 +191,9 @@ enum {
 	JOB_REQ_LINEAGE,
 #ifdef __METASTACK_OPT_RESC_NODEDETAIL
 	JOB_REQ_RESC_NODE,
+#endif
+#ifdef __METASTACK_NEW_APP_PARAM
+	JOB_REQ_APP,
 #endif
 	JOB_REQ_USER_NAME,
 	JOB_REQ_COUNT
@@ -581,6 +587,13 @@ static int _cluster_get_jobs(kingbase_conn_t *kingbase_conn,
 			   "on t1.env_hash_inx=t4.hash_inx",
 			   cluster_name, job_env_table);
 
+#ifdef __METASTACK_NEW_APP_PARAM
+	xstrfmtcat(query,
+		   " left join `%s_%s` as t5 "
+		   "on t1.job_db_inx=t5.job_db_inx",
+		   cluster_name, apptype_table);
+#endif
+
 	if (job_cond->flags & JOBCOND_FLAG_RUNAWAY) {
 		if (extra)
 			xstrcat(extra, " and (t1.time_end=0)");
@@ -879,6 +892,13 @@ static int _cluster_get_jobs(kingbase_conn_t *kingbase_conn,
 		job->system_comment = xstrdup(KCIResultGetColumnValue(result,i,JOB_REQ_SYSTEM_COMMENT));
 #ifdef __METASTACK_OPT_RESC_NODEDETAIL
 		job->resource_node_detail = xstrdup(KCIResultGetColumnValue(result,i,JOB_REQ_RESC_NODE));
+#endif
+#ifdef __METASTACK_NEW_APP_PARAM
+		{
+			const char *app_val = KCIResultGetColumnValue(result, i, JOB_REQ_APP);
+			if (app_val && app_val[0])
+				job->app = xstrdup(app_val);
+		}
 #endif
 		job->constraints = xstrdup(KCIResultGetColumnValue(result,i,JOB_REQ_CONSTRAINTS));
 		job->container = xstrdup(KCIResultGetColumnValue(result,i,JOB_REQ_CONTAINER));

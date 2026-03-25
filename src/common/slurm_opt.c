@@ -1050,6 +1050,39 @@ static slurm_cli_opt_t slurm_opt_apptype = {
 };
 #endif
 
+#ifdef __METASTACK_NEW_APP_PARAM
+/*
+ * --app=<appname>  User-specified application type.
+ * When set to the special value "list", sbatch will print supported apps
+ * and exit before job submission.
+ */
+static int arg_set_app(slurm_opt_t *opt, const char *arg)
+{
+	xfree(opt->apptype);
+	opt->apptype = xstrdup(arg);
+	return SLURM_SUCCESS;
+}
+static int arg_set_data_app(slurm_opt_t *opt, const data_t *arg, data_t *errors)
+{
+	xfree(opt->apptype);
+	opt->apptype = xstrdup(data_get_string(arg));
+	return SLURM_SUCCESS;
+}
+static void arg_reset_app(slurm_opt_t *opt)
+{
+	xfree(opt->apptype);
+}
+static slurm_cli_opt_t slurm_opt_app = {
+	.name = "app",
+	.has_arg = required_argument,
+	.val = LONG_OPT_APP,
+	.set_func = arg_set_app,
+	.set_func_data = arg_set_data_app,
+	.get_func = arg_get_apptype,
+	.reset_func = arg_reset_app,
+};
+#endif
+
 static int arg_set_compress(slurm_opt_t *opt, const char *arg)
 {
 	if (!opt->srun_opt)
@@ -6100,6 +6133,9 @@ static const slurm_cli_opt_t *common_options[] = {
 #ifdef __METASTACK_NEW_APPTYPE_RECOGNITION
 	&slurm_opt_submit_line,
 	&slurm_opt_apptype,
+#endif
+#ifdef __METASTACK_NEW_APP_PARAM
+	&slurm_opt_app,
 #endif
 	NULL /* END */
 };

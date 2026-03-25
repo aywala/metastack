@@ -229,6 +229,10 @@ int _print_job_command(job_info_t * job, int width, bool right_justify,
 int _print_job_order(job_info_t * job, int width, bool right_justify,
 			char* suffix);
 #endif
+#ifdef __METASTACK_NEW_APP_PARAM
+int _print_job_apptype(job_info_t * job, int width, bool right_justify,
+			char* suffix);
+#endif
 int _print_job_work_dir(job_info_t * job, int width, bool right_justify,
 			char* suffix);
 int _print_job_nice(job_info_t * job, int width, bool right_justify,

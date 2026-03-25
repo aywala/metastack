@@ -1677,6 +1677,19 @@ int _print_job_order(job_info_t * job, int width, bool right_justify,
 	return SLURM_SUCCESS;
 }
 #endif
+#ifdef __METASTACK_NEW_APP_PARAM
+int _print_job_apptype(job_info_t * job, int width, bool right_justify,
+			char* suffix)
+{
+	if (job == NULL)
+		_print_str("APP", width, right_justify, true);
+	else
+		_print_str(job->app, width, right_justify, true);
+	if (suffix)
+		printf("%s", suffix);
+	return SLURM_SUCCESS;
+}
+#endif
 int _print_job_command(job_info_t * job, int width, bool right_justify,
 			char* suffix)
 {

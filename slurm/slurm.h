@@ -411,6 +411,14 @@ typedef struct sbcast_cred sbcast_cred_t;		/* opaque data type */
 #define __METASTACK_NEW_APPTYPE_RECOGNITION
 #endif
 
+/*
+	Support user-specified --app parameter for job submission, predefined app templates,
+	squeue/scontrol/sacct display of app type, and a new apptype DB table linked via job_db_inx.
+*/
+#ifndef __METASTACK_NEW_APP_PARAM
+#define __METASTACK_NEW_APP_PARAM
+#endif
+
 #ifndef __METASTACK_NEW_CUSTOM_EXCEPTION
 #define __METASTACK_NEW_CUSTOM_EXCEPTION
 #endif
@@ -2323,6 +2331,9 @@ typedef struct job_info {
 	char *work_dir;		/* pathname of working directory */
 #ifdef __METASTACK_NEW_PENDING_ORDER
 	uint32_t pending_order;
+#endif
+#ifdef __METASTACK_NEW_APP_PARAM
+	char *app;		/* --app: user-specified application type */
 #endif
 } slurm_job_info_t;
 

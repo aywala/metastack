@@ -43,6 +43,8 @@
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -71,6 +73,233 @@
 #ifdef __METASTACK_NEW_CUSTOM_EXCEPTION
 #define  JOB_SUBMIT_SBATCH 0x001
 #endif
+
+#ifdef __METASTACK_NEW_APP_PARAM
+/* Default app profiles config file location */
+#define APP_PROFILES_CONF_FILE "/etc/slurm/app_profiles.conf"
+#define APP_PROFILE_MAX_NAMELEN 128
+#define APP_PROFILE_MAX_LINELEN 4096
+
+typedef struct {
+	char *name;
+	char *description;
+	char *pre_script;
+	char *post_script;
+	char *watchdog_script;
+	char *env;           /* comma-separated KEY=VALUE pairs */
+} app_profile_t;
+
+/*
+ * Free a single app_profile_t (does not free the pointer itself).
+ */
+static void _free_app_profile(app_profile_t *p)
+{
+	if (!p)
+		return;
+	xfree(p->name);
+	xfree(p->description);
+	xfree(p->pre_script);
+	xfree(p->post_script);
+	xfree(p->watchdog_script);
+	xfree(p->env);
+}
+
+/*
+ * Load app profiles from the config file.
+ * Returns a List of app_profile_t*, caller must free with list_destroy().
+ */
+static List _load_app_profiles(const char *conf_file)
+{
+	FILE *fp;
+	char line[APP_PROFILE_MAX_LINELEN];
+	List profiles = NULL;
+	app_profile_t *cur = NULL;
+
+	if (!conf_file)
+		conf_file = APP_PROFILES_CONF_FILE;
+
+	fp = fopen(conf_file, "r");
+	if (!fp)
+		return NULL;
+
+	profiles = list_create((ListDelF) xfree);
+	while (fgets(line, sizeof(line), fp)) {
+		char *p = line;
+		/* Skip leading whitespace */
+		while (*p == ' ' || *p == '\t') p++;
+		/* Skip comments and empty lines */
+		if (*p == '#' || *p == '\0' || *p == '\n')
+			continue;
+
+		if (*p == '[') {
+			/* New section */
+			char *end = strchr(p, ']');
+			if (end) {
+				if (cur) {
+					list_append(profiles, cur);
+					cur = NULL;
+				}
+				cur = xmalloc(sizeof(app_profile_t));
+				*end = '\0';
+				cur->name = xstrdup(p + 1);
+				/* Convert name to lowercase */
+				for (char *q = cur->name; *q; q++)
+					*q = tolower((unsigned char)*q);
+			}
+		} else if (cur) {
+			/* Key = Value pair */
+			char *eq = strchr(p, '=');
+			if (!eq)
+				continue;
+			*eq = '\0';
+			char *key = p;
+			char *val = eq + 1;
+			/* Trim trailing whitespace from key */
+			char *ke = key + strlen(key) - 1;
+			while (ke > key && (*ke == ' ' || *ke == '\t')) ke--;
+			*(ke + 1) = '\0';
+			/* Trim leading whitespace from val */
+			while (*val == ' ' || *val == '\t') val++;
+			/* Trim trailing newline/whitespace from val */
+			char *ve = val + strlen(val) - 1;
+			while (ve > val && (*ve == '\n' || *ve == '\r' ||
+					    *ve == ' ' || *ve == '\t')) ve--;
+			*(ve + 1) = '\0';
+
+			if (!xstrcasecmp(key, "Description")) {
+				xfree(cur->description);
+				cur->description = xstrdup(val);
+			} else if (!xstrcasecmp(key, "PreScript")) {
+				xfree(cur->pre_script);
+				cur->pre_script = xstrdup(val);
+			} else if (!xstrcasecmp(key, "PostScript")) {
+				xfree(cur->post_script);
+				cur->post_script = xstrdup(val);
+			} else if (!xstrcasecmp(key, "WatchdogScript")) {
+				xfree(cur->watchdog_script);
+				cur->watchdog_script = xstrdup(val);
+			} else if (!xstrcasecmp(key, "Env")) {
+				xfree(cur->env);
+				cur->env = xstrdup(val);
+			}
+		}
+	}
+	fclose(fp);
+	if (cur)
+		list_append(profiles, cur);
+
+	return profiles;
+}
+
+/*
+ * Print all available app profiles and exit.
+ */
+static void _print_app_list(const char *conf_file)
+{
+	List profiles = _load_app_profiles(conf_file);
+	if (!profiles || list_count(profiles) == 0) {
+		printf("No predefined app profiles found");
+		if (conf_file)
+			printf(" in %s", conf_file);
+		printf(".\n");
+		if (profiles)
+			FREE_NULL_LIST(profiles);
+		return;
+	}
+
+	printf("Predefined application profiles:\n");
+	printf("%-20s %s\n", "NAME", "DESCRIPTION");
+	printf("%-20s %s\n", "--------------------",
+	       "----------------------------------------");
+	list_itr_t *itr = list_iterator_create(profiles);
+	app_profile_t *p;
+	while ((p = list_next(itr))) {
+		printf("%-20s %s\n", p->name,
+		       p->description ? p->description : "(no description)");
+	}
+	list_iterator_destroy(itr);
+	FREE_NULL_LIST(profiles);
+}
+
+/*
+ * Find the app profile matching name (case-insensitive).
+ * Returns a pointer into the list (do not free) or NULL if not found.
+ */
+static app_profile_t *_find_app_profile(List profiles, const char *name)
+{
+	if (!profiles || !name)
+		return NULL;
+	char *lname = xstrdup(name);
+	for (char *q = lname; *q; q++)
+		*q = tolower((unsigned char)*q);
+
+	list_itr_t *itr = list_iterator_create(profiles);
+	app_profile_t *p, *found = NULL;
+	while ((p = list_next(itr))) {
+		if (!xstrcmp(p->name, lname)) {
+			found = p;
+			break;
+		}
+	}
+	list_iterator_destroy(itr);
+	xfree(lname);
+	return found;
+}
+
+/*
+ * Apply env vars from an app profile to the job's environment.
+ * The profile's Env field is a comma-separated list of KEY=VALUE pairs.
+ */
+static void _apply_app_profile_env(app_profile_t *profile,
+				    char ***environment)
+{
+	if (!profile || !profile->env || !*environment)
+		return;
+
+	char *env_str = xstrdup(profile->env);
+	char *tok = NULL, *save_ptr = NULL;
+	tok = strtok_r(env_str, ",", &save_ptr);
+	while (tok) {
+		/* Trim leading whitespace */
+		while (*tok == ' ' || *tok == '\t') tok++;
+		if (*tok) {
+			char *eq = strchr(tok, '=');
+			if (eq) {
+				*eq = '\0';
+				env_array_overwrite(environment, tok, eq + 1);
+				*eq = '=';
+			}
+		}
+		tok = strtok_r(NULL, ",", &save_ptr);
+	}
+	xfree(env_str);
+}
+
+/*
+ * Apply the app profile: set env vars and record pre/post/watchdog scripts
+ * as SLURM_APP_* environment variables so they are accessible at runtime.
+ */
+static void _apply_app_profile(app_profile_t *profile, char ***environment)
+{
+	if (!profile || !*environment)
+		return;
+
+	/* Apply env vars */
+	_apply_app_profile_env(profile, environment);
+
+	/* Store pre/post/watchdog script paths as env vars */
+	if (profile->pre_script)
+		env_array_overwrite(environment, "SLURM_APP_PRE_SCRIPT",
+				    profile->pre_script);
+	if (profile->post_script)
+		env_array_overwrite(environment, "SLURM_APP_POST_SCRIPT",
+				    profile->post_script);
+	if (profile->watchdog_script)
+		env_array_overwrite(environment, "SLURM_APP_WATCHDOG_SCRIPT",
+				    profile->watchdog_script);
+}
+#endif /* __METASTACK_NEW_APP_PARAM */
+
 static int   _fill_job_desc_from_opts(job_desc_msg_t *desc);
 static void *_get_script_buffer(const char *filename, int *size);
 static int   _job_wait(uint32_t job_id);
@@ -120,6 +349,18 @@ int main(int argc, char **argv)
 		error("Failed to register atexit handler for plugins: %m");
 
 	script_name = process_options_first_pass(argc, argv);
+
+#ifdef __METASTACK_NEW_APP_PARAM
+	/* Handle --app=list: print available profiles and exit */
+	if (opt.apptype && !xstrcasecmp(opt.apptype, "list")) {
+		const char *conf_file = NULL;
+		/* Try to find profile config from standard locations */
+		if (access(APP_PROFILES_CONF_FILE, R_OK) == 0)
+			conf_file = APP_PROFILES_CONF_FILE;
+		_print_app_list(conf_file);
+		exit(0);
+	}
+#endif
 
 	/* Preserve quiet request which is lost in second pass */
 	quiet = opt.quiet;
@@ -217,6 +458,30 @@ int main(int argc, char **argv)
 #endif
 		if (_fill_job_desc_from_opts(desc) == -1)
 			exit(error_exit);
+#ifdef __METASTACK_NEW_APP_PARAM
+		/* Apply predefined app profile if --app was specified */
+		if (opt.apptype && xstrcasecmp(opt.apptype, "list") != 0) {
+			const char *conf_file = NULL;
+			if (access(APP_PROFILES_CONF_FILE, R_OK) == 0)
+				conf_file = APP_PROFILES_CONF_FILE;
+			if (conf_file) {
+				List profiles = _load_app_profiles(conf_file);
+				if (profiles) {
+					app_profile_t *profile =
+						_find_app_profile(profiles,
+								  opt.apptype);
+					if (profile)
+						_apply_app_profile(
+							profile,
+							&desc->environment);
+					FREE_NULL_LIST(profiles);
+				}
+			}
+			/* Record the app name in the SLURM_APP env var */
+			env_array_overwrite(&desc->environment,
+					    "SLURM_APP", opt.apptype);
+		}
+#endif
 		if (!first_desc)
 			first_desc = desc;
 		if (het_job_inx || !het_job_fini) {

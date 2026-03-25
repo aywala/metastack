@@ -1,0 +1,70 @@
+# App profiles configuration for MetaStack
+# This file defines predefined application profiles similar to LSF applications.
+# Location: /etc/slurm/app_profiles.conf (or configure AppProfilesConf in slurm.conf)
+#
+# Each profile is defined with a [AppName] section header.
+# Profile names are case-insensitive when specified with --app=<name>.
+#
+# Supported fields:
+#   Description   = Short description of the application
+#   PreScript     = Path to script run before the job's main script
+#   PostScript    = Path to script run after the job's main script
+#   WatchdogScript= Path to a monitoring/watchdog script run alongside the job
+#   Env           = Comma-separated list of KEY=VALUE environment variable pairs
+#                   that are added to the job environment
+#
+# Usage:
+#   sbatch --app=vasp myjob.sh        - Submit using the VASP profile
+#   sbatch --app=list                  - List all available profiles
+
+[vasp]
+Description = Vienna Ab initio Simulation Package (VASP)
+PreScript = /opt/apps/vasp/pre.sh
+PostScript = /opt/apps/vasp/post.sh
+WatchdogScript = /opt/apps/vasp/watchdog.sh
+Env = OMP_NUM_THREADS=1,I_MPI_SHM_LMT=shm,VASP_PP_PATH=/opt/vasp/potcar
+
+[gromacs]
+Description = GROMACS Molecular Dynamics Simulation
+PreScript = /opt/apps/gromacs/pre.sh
+PostScript = /opt/apps/gromacs/post.sh
+Env = GMX_MAXBACKUP=-1,OMP_NUM_THREADS=1
+
+[lammps]
+Description = Large-scale Atomic/Molecular Massively Parallel Simulator
+Env = OMP_NUM_THREADS=1
+
+[gaussian]
+Description = Gaussian Computational Chemistry Software
+PreScript = /opt/apps/gaussian/pre.sh
+Env = GAUSS_SCRDIR=/tmp/gaussian,OMP_NUM_THREADS=1
+
+[pytorch]
+Description = PyTorch Deep Learning Framework
+Env = OMP_NUM_THREADS=1,NCCL_DEBUG=INFO
+
+[tensorflow]
+Description = TensorFlow Machine Learning Platform
+Env = OMP_NUM_THREADS=1,TF_CPP_MIN_LOG_LEVEL=1
+
+[openfoam]
+Description = OpenFOAM Computational Fluid Dynamics
+PreScript = /opt/apps/openfoam/pre.sh
+PostScript = /opt/apps/openfoam/post.sh
+Env = WM_PROJECT_DIR=/opt/openfoam,OMP_NUM_THREADS=1
+
+[ansys]
+Description = ANSYS Simulation Software
+Env = ANSYS_LICENSE_FILE=1055@licenseserver,OMP_NUM_THREADS=1
+
+[abaqus]
+Description = ABAQUS Finite Element Analysis
+Env = LM_LICENSE_FILE=27000@licenseserver
+
+[namd]
+Description = Nanoscale Molecular Dynamics (NAMD)
+Env = OMP_NUM_THREADS=1
+
+[cp2k]
+Description = CP2K Quantum Chemistry and Solid State Physics
+Env = OMP_NUM_THREADS=1

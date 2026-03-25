@@ -105,6 +105,9 @@ extern char *step_table;
 extern char *txn_table;
 extern char *user_table;
 extern char *suspend_table;
+#ifdef __METASTACK_NEW_APP_PARAM
+extern char *apptype_table;
+#endif
 extern char *wckey_day_table;
 extern char *wckey_hour_table;
 extern char *wckey_month_table;

@@ -928,6 +928,22 @@ no_rollup_change:
 			as_kingbase_suspend(kingbase_conn, job_db_inx, job_ptr);
 	}
 
+#ifdef __METASTACK_NEW_APP_PARAM
+	/* Save app type to apptype_table if --app was specified */
+	if (job_ptr->db_index && job_ptr->details && job_ptr->details->apptype) {
+		char *app_query = xstrdup_printf(
+			"insert into \"%s_%s\" (job_db_inx, app) values "
+			"(%"PRIu64", '%s') on conflict (job_db_inx) "
+			"do update set app='%s';",
+			kingbase_conn->cluster_name, apptype_table,
+			job_ptr->db_index, job_ptr->details->apptype,
+			job_ptr->details->apptype);
+		DB_DEBUG(DB_JOB, kingbase_conn->conn, "query\n%s", app_query);
+		(void) kingbase_db_query(kingbase_conn, app_query);
+		xfree(app_query);
+	}
+#endif
+
 	xfree(query);
 
 	return rc;
