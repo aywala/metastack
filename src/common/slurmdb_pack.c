@@ -5595,6 +5595,9 @@ extern void slurmdb_pack_job_rec(void *object, uint16_t protocol_version,
 #ifdef __METASTACK_OPT_RESC_NODEDETAIL
 		packstr(job->resource_node_detail, buffer);
 #endif
+#ifdef __METASTACK_NEW_APP_PARAM
+		packstr(job->app, buffer);
+#endif
 	} else if (protocol_version >= SLURM_24_05_PROTOCOL_VERSION) {
 		packstr(job->account, buffer);
 		packstr(job->admin_comment, buffer);
@@ -5950,6 +5953,9 @@ extern void slurmdb_pack_job_rec(void *object, uint16_t protocol_version,
 #ifdef __METASTACK_OPT_RESC_NODEDETAIL
 		packstr(job->resource_node_detail, buffer);
 #endif
+#ifdef __METASTACK_NEW_APP_PARAM
+		packstr(job->app, buffer);
+#endif
 	}
 #endif
 	else {
@@ -6060,6 +6066,9 @@ extern int slurmdb_unpack_job_rec(void **job, uint16_t protocol_version,
 #endif
 #ifdef __METASTACK_OPT_RESC_NODEDETAIL
 		safe_unpackstr(&job_ptr->resource_node_detail, buffer);
+#endif
+#ifdef __METASTACK_NEW_APP_PARAM
+		safe_unpackstr(&job_ptr->app, buffer);
 #endif
 	} else if (protocol_version >= SLURM_24_05_PROTOCOL_VERSION) {
 		safe_unpackstr(&job_ptr->account, buffer);
@@ -6415,6 +6424,9 @@ extern int slurmdb_unpack_job_rec(void **job, uint16_t protocol_version,
 #endif
 #ifdef __METASTACK_OPT_RESC_NODEDETAIL
 		safe_unpackstr(&job_ptr->resource_node_detail, buffer);
+#endif
+#ifdef __METASTACK_NEW_APP_PARAM
+		safe_unpackstr(&job_ptr->app, buffer);
 #endif
 	}
 #endif

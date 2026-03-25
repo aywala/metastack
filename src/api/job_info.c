@@ -914,6 +914,14 @@ slurm_sprint_job_info ( job_info_t * job_ptr, int one_liner )
 	/****** Line 22 ******/
 	xstrfmtcat(out, "WorkDir=%s", job_ptr->work_dir);
 
+#ifdef __METASTACK_NEW_APP_PARAM
+	/****** Line (optional) ******/
+	if (job_ptr->app) {
+		xstrcat(out, line_end);
+		xstrfmtcat(out, "AppType=%s", job_ptr->app);
+	}
+#endif
+
 	/****** Line (optional) ******/
 	if (job_ptr->admin_comment) {
 		xstrcat(out, line_end);

@@ -5256,6 +5256,9 @@ _unpack_job_info_members(job_info_t * job, buf_t *buffer,
 #ifdef __METASTACK_NEW_TIME_PREDICT
 		safe_unpack16(&job->predict_job, buffer);
 #endif
+#ifdef __METASTACK_NEW_APP_PARAM
+		safe_unpackstr(&job->app, buffer);
+#endif
 	} else if (protocol_version >= SLURM_24_05_PROTOCOL_VERSION) {
 		uint8_t uint8_tmp;
 		safe_unpack32(&job->array_job_id, buffer);

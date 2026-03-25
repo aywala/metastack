@@ -2235,6 +2235,24 @@ extern void print_fields(type_t type, void *object)
 					     (curr_inx == field_count));
 			break;
 #endif
+#ifdef __METASTACK_NEW_APP_PARAM
+		case PRINT_APPTYPE:
+			switch(type) {
+			case JOB:
+				tmp_char = job->app;
+				break;
+			case JOBSTEP:
+				break;
+			case JOBCOMP:
+				break;
+			default:
+				break;
+			}
+			field->print_routine(field,
+					     tmp_char,
+					     (curr_inx == field_count));
+			break;
+#endif
 		default:
 			break;
 		}

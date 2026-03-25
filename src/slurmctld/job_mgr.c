@@ -11448,6 +11448,12 @@ void pack_job(job_record_t *dump_job_ptr, uint16_t show_flags, buf_t *buffer,
 #ifdef __METASTACK_NEW_TIME_PREDICT
 		pack16(dump_job_ptr->predict_job, buffer);
 #endif
+#ifdef __METASTACK_NEW_APP_PARAM
+		if (detail_ptr)
+			packstr(detail_ptr->apptype, buffer);
+		else
+			packnull(buffer);
+#endif
 	} else if (protocol_version >= SLURM_24_05_PROTOCOL_VERSION) {
 		detail_ptr = dump_job_ptr->details;
 		pack32(dump_job_ptr->array_job_id, buffer);
