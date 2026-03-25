@@ -1058,6 +1058,21 @@ static slurm_cli_opt_t slurm_opt_apptype = {
  */
 static int arg_set_app(slurm_opt_t *opt, const char *arg)
 {
+	const char *p;
+	if (!arg)
+		return SLURM_ERROR;
+	/* Allow "list" or simple alphanumeric/underscore/hyphen/dot names */
+	if (xstrcasecmp(arg, "list") != 0) {
+		for (p = arg; *p; p++) {
+			if (!isalnum((unsigned char)*p) &&
+			    *p != '_' && *p != '-' && *p != '.') {
+				error("--app: invalid character '%c' in app name '%s'. "
+				      "Only alphanumeric, '_', '-', '.' are allowed.",
+				      *p, arg);
+				return SLURM_ERROR;
+			}
+		}
+	}
 	xfree(opt->apptype);
 	opt->apptype = xstrdup(arg);
 	return SLURM_SUCCESS;

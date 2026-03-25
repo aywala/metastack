@@ -102,6 +102,7 @@ static void _free_app_profile(app_profile_t *p)
 	xfree(p->post_script);
 	xfree(p->watchdog_script);
 	xfree(p->env);
+	xfree(p);
 }
 
 /*
@@ -122,7 +123,7 @@ static List _load_app_profiles(const char *conf_file)
 	if (!fp)
 		return NULL;
 
-	profiles = list_create((ListDelF) xfree);
+	profiles = list_create((ListDelF) _free_app_profile);
 	while (fgets(line, sizeof(line), fp)) {
 		char *p = line;
 		/* Skip leading whitespace */
